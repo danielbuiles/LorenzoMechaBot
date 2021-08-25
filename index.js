@@ -1,6 +1,73 @@
 const { Client, MessageEmbed } = require('discord.js');
+const Database = require("@replit/database")
+const fetch = require('node-fetch');
+const mantenerVivo= require('./server')
 const config = require('./config');
 const commands = require('./help');
+
+const db = new Database();
+
+const sadWords=['trite',
+'gas','noo','Derrota','perder',
+'ki','capas','malo','malito','pereza',
+'rabia','triztesa','oe','ale','si','pa','parce','jugar','juga','forest',
+'oee','oeee','yes','lol','yasuo','sera','?','bueno'];
+
+const startCounters=[
+  'Callate estoy en mi descansito',
+  'Por favor silencio estoy estudiando!',
+  'Mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm',
+  'eso dicen',
+  'Mmmmmmmmmmmmm',
+  'Mmmmmmmm',
+  'Mmmm',
+  'KI AL 1000%',
+  'Prrrrrrrrrr',
+  'Ayyy q rabi q Rabiaaaaa',
+  'bnoo no se como estaran ustedes pero yo toy bien!',
+  'Oeeeeeeelo',
+  'No me retes escoria',
+  'eructooooooooo!!! aaa no me aguante!',
+  'Biip Boooop bep MechaLorenzo es el mejor ;D',
+  ];
+
+  db.get("counters").then(counters => {
+    if( !counters || counters.length < 1){
+      db.set("counters",startCounters);
+    }
+  });
+
+  db.get("responding").then(value => {
+    if(value == null){
+      db.set("responding",true);
+    }
+  });
+
+  function updateCounters(counterMessage){
+    db.get("counters").then(counters => {
+      counters.push([counterMessage])
+      db.set("counters",counters)
+    });
+  }
+
+  function deleteCounters(index){
+    db.get("counters").then(counters => {
+      if(counters.length > index){
+        counters.splice(index,1)
+        db.set("counters",counters)
+      }
+    });
+  }
+
+function getPalabra(){
+  return fetch("https://zenquotes.io/api/random")
+  .then(res => {
+      return res.json();
+  })
+  .then(data => {
+    return data[0]["q"]+" -  Autor:"+data[0]["a"]+"    (¡Traducir al español!)";
+  });
+}
 
 let bot = new Client({
   fetchAllMembers: true, // Remove this if the bot is in large guilds.
@@ -17,11 +84,59 @@ bot.on('ready', () => console.log(`En linea: ${bot.user.tag}.`));
 
 bot.on('message', async message => {
   // Check for command
+  if(message.author.bot) return;
+
+  db.get("responding").then(responding => {
+    if(responding && sadWords.some(word => message.content.includes(word))){
+    db.get("counters").then(counters => {
+        const contras = counters[Math.floor(Math.random() * counters.length)];
+        message.reply(contras);
+      });
+    }
+  });
+
   if (message.content.startsWith(config.prefix)) {
+
     let args = message.content.slice(config.prefix.length).split(' ');
     let command = args.shift().toLowerCase();
 
     switch (command) {
+
+      case '$lista':
+      case '$lis':
+        db.get("counters").then(counters => {
+          message.channel.send(counters);
+        })
+      break;
+
+      case '$respuesta':
+      case '$res':
+        value = message.content.split("$respuesta ")[1];
+        if(value == "true"){
+          db.set("responding",true)
+          message.channel.send("Yo respondere mensajes!")
+        }else{
+          db.set("responding",false)
+          message.channel.send("me has desactivado 🤬!")
+        }
+      break;
+
+      case '$new':
+        counterMessage = message.content.split("$new ")[1];
+        updateCounters(counterMessage);
+        message.channel.send("se ha agragado tu frase a mi lista de vocabulario!");
+      break;
+
+      case '$del':
+        counterMessage = parseInt(message.content.split("$del ")[1]);
+        deleteCounters(counterMessage);
+        message.channel.send("se ha eliminado la frase que estaba en ese indise");
+      break;
+
+      case 'ins':
+      case 'inspirame':
+        getPalabra().then(palabra => message.channel.send(palabra))
+      break;
 
       case 'serv':
       case 'servidor':
@@ -70,5 +185,5 @@ bot.on('message', async message => {
   }
 });
 
-require('./server')();
+mantenerVivo();
 bot.login(config.token);

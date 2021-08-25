@@ -1,7 +1,15 @@
-const app = require('express')();
+const express = require('express');
 
-app.get('/', (req, res) => res.send('Server is up.'));
+const server = express();
 
-module.exports = () => {
-  app.listen(3000);
+server.all("/", (req,res) => {
+  res.send("el bot eta ejecutandose!");
+});
+
+function mantenerVivo() {
+  server.listen(3000,() => {
+      console.log("Tamos listos!");
+  })
 }
+
+module.exports = mantenerVivo;
